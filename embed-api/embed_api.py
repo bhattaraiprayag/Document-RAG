@@ -19,6 +19,7 @@ print(f"🔧 HF_HOME set to: {MODELS_CACHE_DIR}")
 print(f"🔧 All models will be cached here.")
 
 # NOW import HuggingFace libraries (after env vars are set)
+import gc
 import time
 import asyncio
 import numpy as np
@@ -35,7 +36,8 @@ MODEL_ID = "BAAI/bge-m3"
 ONNX_MODEL_ID = "gpahal/bge-m3-onnx-int8"
 MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "32"))
 BATCH_TIMEOUT_S = 0.01
-MAX_QUEUE_SIZE = 1000
+MAX_QUEUE_SIZE = 500  # Reduced from 1000 for better backpressure
+MAX_TEXTS_PER_REQUEST = 128  # Hard limit to prevent memory explosion
 
 # Query instruction prefix for better retrieval
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
@@ -152,9 +154,14 @@ class ModelBatcher:
 
 
 # --- Helper Function for Inference (Synchronous) ---
-def run_inference_sync(texts: List[str]):
+def run_inference_sync(texts: List[str]) -> Tuple[List[List[float]], List[Dict[int, float]], float]:
     """
     Synchronous inference function for thread pool execution.
+
+    Includes explicit memory cleanup to prevent accumulation across batches.
+
+    Args:
+        texts: List of text strings to embed
 
     Returns:
         Tuple of (dense_vecs, sparse_vecs, latency_ms)
@@ -166,23 +173,24 @@ def run_inference_sync(texts: List[str]):
         texts,
         padding=True,
         truncation=True,
-        max_length=512,  # Explicit max_length to avoid surprises
-        return_tensors="np"
+        max_length=512,
+        return_tensors="np",
     )
 
     t0 = time.perf_counter()
     outputs = model(**inputs)
     latency = (time.perf_counter() - t0) * 1e3
 
-    # Dense vectors
+    # Dense vectors - convert to Python lists immediately
     dense_vecs = outputs["dense_vecs"].tolist()
 
     # Sparse vectors - remove special tokens
     sparse_vecs = []
     raw_sparse = outputs["sparse_vecs"]
+    input_ids = inputs["input_ids"]
 
     for i, seq_weights in enumerate(raw_sparse):
-        current_input_ids = inputs["input_ids"][i]
+        current_input_ids = input_ids[i]
         token_weight_map = {}
         for idx, weight in enumerate(seq_weights):
             if weight > 0:
@@ -196,6 +204,13 @@ def run_inference_sync(texts: List[str]):
                 else:
                     token_weight_map[token_id] = val
         sparse_vecs.append(token_weight_map)
+
+    # Explicit memory cleanup to prevent accumulation
+    del inputs
+    del outputs
+    del raw_sparse
+    del input_ids
+    gc.collect()
 
     return dense_vecs, sparse_vecs, latency
 
@@ -266,10 +281,21 @@ async def create_embeddings(request: EmbeddingRequest):
 
     Returns:
         EmbeddingResponse with dense and sparse vectors
+
+    Raises:
+        HTTPException 400: If input is empty or exceeds MAX_TEXTS_PER_REQUEST
     """
     input_texts = [request.text] if isinstance(request.text, str) else request.text
+
     if not input_texts:
         raise HTTPException(status_code=400, detail="Input text cannot be empty.")
+
+    if len(input_texts) > MAX_TEXTS_PER_REQUEST:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many texts in single request. Max: {MAX_TEXTS_PER_REQUEST}, got: {len(input_texts)}. "
+            f"Use smaller batches to prevent memory issues.",
+        )
 
     # Apply query prefix if flagged
     if request.is_query:

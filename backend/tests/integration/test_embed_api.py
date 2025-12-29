@@ -100,3 +100,37 @@ class TestEmbedAPI:
                 assert response.status_code == 400
             except httpx.ConnectError:
                 pytest.skip("Embedding API not running on localhost:8001")
+
+    async def test_embed_too_many_texts_error(self) -> None:
+        """Test that exceeding MAX_TEXTS_PER_REQUEST returns error."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                # Create 150 texts (exceeds MAX_TEXTS_PER_REQUEST of 128)
+                texts = [f"Text number {i}" for i in range(150)]
+                response = await client.post(
+                    "http://localhost:8001/embed",
+                    json={"text": texts, "is_query": False},
+                )
+                assert response.status_code == 400
+                data = response.json()
+                assert "Too many texts" in data["detail"]
+                assert "128" in data["detail"]
+            except httpx.ConnectError:
+                pytest.skip("Embedding API not running on localhost:8001")
+
+    async def test_embed_at_limit_succeeds(self) -> None:
+        """Test that exactly MAX_TEXTS_PER_REQUEST texts succeeds."""
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                # Create exactly 128 texts (at MAX_TEXTS_PER_REQUEST limit)
+                texts = [f"Text number {i}" for i in range(128)]
+                response = await client.post(
+                    "http://localhost:8001/embed",
+                    json={"text": texts, "is_query": False},
+                )
+                assert response.status_code == 200
+                data = response.json()
+                assert len(data["dense_vecs"]) == 128
+                assert len(data["sparse_vecs"]) == 128
+            except httpx.ConnectError:
+                pytest.skip("Embedding API not running on localhost:8001")

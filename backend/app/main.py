@@ -26,9 +26,11 @@ from .database.qdrant_client import QdrantDB
 from .rag.orchestrator import RAGOrchestrator
 from .observability.metrics import metrics
 from .config import settings
+from .utils.batch_embed import embed_texts_in_batches, DEFAULT_EMBED_BATCH_SIZE
 
 # Configuration
 UPLOAD_DIR = Path("./uploads")
+EMBED_BATCH_SIZE = DEFAULT_EMBED_BATCH_SIZE
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".epub", ".txt", ".md"}
 
@@ -169,18 +171,28 @@ class IngestionManager:
 
             # Stage: Embedding
             job.stage = IngestionStage.EMBEDDING
-            job.progress = 0.6
-            print(f"🧮 Embedding {len(children)} chunks...")
+            job.progress = 0.5
+            total_chunks = len(children)
+            total_batches = (total_chunks + EMBED_BATCH_SIZE - 1) // EMBED_BATCH_SIZE
+            print(f"🧮 Embedding {total_chunks} chunks in {total_batches} batches...")
 
-            # Embed children in batches
+            # Progress callback for granular tracking
+            def on_batch_progress(current: int, total: int) -> None:
+                # Progress from 0.5 to 0.8 during embedding
+                batch_progress = current / total
+                job.progress = 0.5 + (batch_progress * 0.3)
+                print(f"   📦 Batch {current}/{total} complete")
+
+            # Embed children in controlled batches to prevent memory explosion
             child_texts = [c.content for c in children]
-            response = await client.post(
-                f"{settings.embed_api_url}/embed",
-                json={"text": child_texts, "is_query": False},
+            dense_vecs, sparse_vecs, total_latency = await embed_texts_in_batches(
+                client=client,
+                texts=child_texts,
+                embed_api_url=settings.embed_api_url,
+                batch_size=EMBED_BATCH_SIZE,
+                progress_callback=on_batch_progress,
             )
-            response.raise_for_status()
-            embed_data = response.json()
-            print(f"✅ Embeddings generated ({embed_data['latency_ms']:.1f}ms)")
+            print(f"✅ Embeddings generated ({total_latency:.1f}ms total)")
 
             # Stage: Indexing
             job.stage = IngestionStage.INDEXING
@@ -201,8 +213,8 @@ class IngestionManager:
                     }
                     for c in children
                 ],
-                dense_vectors=embed_data["dense_vecs"],
-                sparse_vectors=embed_data["sparse_vecs"],
+                dense_vectors=dense_vecs,
+                sparse_vectors=sparse_vecs,
             )
 
             self.db.store_parents(
