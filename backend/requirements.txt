@@ -1,0 +1,43 @@
+# Core Framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Environment & Config
+python-dotenv
+pydantic
+pydantic-settings
+
+# Vector Database
+qdrant-client
+
+# Document Processing
+markitdown[all]
+transformers
+tokenizers
+
+# Embeddings & Reranking
+FlagEmbedding
+onnxruntime
+
+# LLM Providers
+openai
+httpx
+
+# NLP
+nltk
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+
+# Code Quality
+mypy
+black
+flake8
+isort
+
+# Observability (Optional)
+langfuse

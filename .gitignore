@@ -1,0 +1,4 @@
+models_cache/
+.env
+*/uploads/
+*/node_modules/
