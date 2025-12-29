@@ -100,9 +100,9 @@ Optimize Docker build process using uv + multi-stage builds, and move Embedding 
 | Phase 1 | ✅ Done | ml-api created with pyproject.toml, ml_api.py, Dockerfile, uv.lock |
 | Phase 2 | ✅ Done | Backend Dockerfile optimized with uv multi-stage build |
 | Phase 3 | ✅ Done | docker-compose.yml updated, unified ml-api service |
-| Phase 4 | 🔲 Pending | Backend refactor needed for single ML API |
+| Phase 4 | ✅ Done | No backend code changes needed - docker-compose env vars handle routing |
 | Phase 5 | ✅ Done | Comprehensive .gitignore created |
-| Phase 6 | 🔲 Pending | Cleanup + final testing |
+| Phase 6 | ✅ Done | Old embed-api/, rerank-api/, qdrant/ removed |
 
 ---
 
