@@ -257,3 +257,149 @@ This is also quite small.
         # Just verify it doesn't crash
         assert len(parents) > 0
         assert engine.tokenizer is not None
+
+    def test_oversized_sentence_force_split(self, sample_file_hash: str) -> None:
+        """Test that oversized sentences are force-split at token boundaries."""
+        engine = ChunkingEngine(
+            parent_max_tokens=100,
+            child_tokens=50,
+            child_overlap=10,
+        )
+
+        # Create content with a very long "sentence" that NLTK can't split
+        # (e.g., a continuous string without sentence boundaries)
+        long_blob = "word " * 500  # ~500+ tokens, no sentence boundaries
+        markdown = f"# Section\n\n{long_blob}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "oversized.md"
+        )
+
+        # Should create multiple parents from the oversized sentence
+        assert len(parents) > 1
+
+        # Verify each parent is within token limit
+        for parent in parents:
+            parent_tokens = len(engine.tokenizer.encode(parent.content))
+            assert parent_tokens <= engine.parent_max_tokens + 10  # Small buffer for tokenizer variance
+
+    def test_oversized_sentence_no_data_loss(self, sample_file_hash: str) -> None:
+        """Test that no significant data is lost when splitting oversized sentences."""
+        engine = ChunkingEngine(
+            parent_max_tokens=100,
+            child_tokens=50,
+            child_overlap=10,
+        )
+
+        # Create numbered words so we can verify coverage
+        numbered_words = " ".join([f"word{i}" for i in range(300)])
+        markdown = f"# Section\n\n{numbered_words}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "numbered.md"
+        )
+
+        # Combine all parent content
+        combined_content = " ".join(p.content for p in parents)
+
+        # Verify most numbered words are present (some may be at boundaries)
+        found_count = sum(1 for i in range(300) if f"word{i}" in combined_content)
+        # Should retain at least 95% of words (allowing for edge cases)
+        assert found_count >= 285, f"Only found {found_count}/300 words"
+
+    def test_mixed_normal_and_oversized_sentences(self, sample_file_hash: str) -> None:
+        """Test handling of sections with both normal and oversized sentences."""
+        engine = ChunkingEngine(
+            parent_max_tokens=100,
+            child_tokens=50,
+            child_overlap=10,
+        )
+
+        # Mix of normal sentences and an oversized blob
+        normal1 = "This is a normal sentence."
+        normal2 = "Another normal sentence here."
+        oversized = "x " * 400  # Oversized content
+        normal3 = "Final normal sentence."
+
+        markdown = f"# Section\n\n{normal1} {oversized} {normal2} {normal3}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "mixed.md"
+        )
+
+        # Should create multiple parents
+        assert len(parents) >= 4  # At least one for each part
+
+        # All parents should be within limits
+        for parent in parents:
+            parent_tokens = len(engine.tokenizer.encode(parent.content))
+            assert parent_tokens <= engine.parent_max_tokens + 10
+
+    def test_parent_tokens_never_exceed_max(self, sample_file_hash: str) -> None:
+        """Test that parent chunks never exceed parent_max_tokens."""
+        engine = ChunkingEngine(
+            parent_max_tokens=200,
+            child_tokens=100,
+            child_overlap=20,
+        )
+
+        # Create extreme content that would previously cause issues
+        extreme_content = "a " * 5000  # Very long content
+        markdown = f"# Extreme Section\n\n{extreme_content}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "extreme.md"
+        )
+
+        for parent in parents:
+            parent_tokens = len(engine.tokenizer.encode(parent.content))
+            # Should never exceed max (with small buffer for tokenizer edge cases)
+            assert parent_tokens <= engine.parent_max_tokens + 5, (
+                f"Parent has {parent_tokens} tokens, exceeds max of {engine.parent_max_tokens}"
+            )
+
+    def test_children_created_for_force_split_parents(self, sample_file_hash: str) -> None:
+        """Test that children are properly created for force-split parents."""
+        engine = ChunkingEngine(
+            parent_max_tokens=100,
+            child_tokens=50,
+            child_overlap=10,
+        )
+
+        oversized = "token " * 400
+        markdown = f"# Section\n\n{oversized}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "force_split.md"
+        )
+
+        # Every parent should have children
+        for parent in parents:
+            assert len(parent.child_ids) > 0, f"Parent {parent.id} has no children"
+
+            # Verify children are properly linked
+            for child_id in parent.child_ids:
+                child = next((c for c in children if c.id == child_id), None)
+                assert child is not None, f"Child {child_id} not found"
+                assert child.parent_id == parent.id
+
+    def test_header_path_preserved_for_split_sections(self, sample_file_hash: str) -> None:
+        """Test that header path is preserved when sections are force-split."""
+        engine = ChunkingEngine(
+            parent_max_tokens=100,
+            child_tokens=50,
+            child_overlap=10,
+        )
+
+        oversized = "content " * 400
+        markdown = f"# Main Chapter\n\n## Subsection\n\n{oversized}"
+
+        parents, children = engine.chunk_document(
+            markdown, sample_file_hash, "headers.md"
+        )
+
+        # All parents from the oversized section should have the same header path
+        for parent in parents:
+            assert parent.header_path != ""
+            # Should contain subsection reference
+            assert "Subsection" in parent.header_path

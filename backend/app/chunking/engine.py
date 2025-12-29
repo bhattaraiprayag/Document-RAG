@@ -223,6 +223,10 @@ class ChunkingEngine:
         """
         Split a large section into multiple parents at sentence boundaries.
 
+        Handles oversized sentences that NLTK cannot split (e.g., code blocks,
+        tables, or poorly formatted text blobs) by force-splitting them at
+        token boundaries to prevent data loss.
+
         Args:
             section: Section dict with header_path and content
             file_hash: File hash
@@ -236,19 +240,51 @@ class ChunkingEngine:
         current_chunk = ""
 
         for sentence in sentences:
-            test_chunk = current_chunk + " " + sentence if current_chunk else sentence
-            if len(self.tokenizer.encode(test_chunk)) > self.parent_max_tokens:
+            sentence_tokens = len(self.tokenizer.encode(sentence))
+
+            if sentence_tokens > self.parent_max_tokens:
                 if current_chunk:
                     parents.append(
-                        self._make_parent(current_chunk, section["header_path"], file_hash, file_name)
+                        self._make_parent(
+                            current_chunk, section["header_path"], file_hash, file_name
+                        )
                     )
-                current_chunk = sentence
+                    current_chunk = ""
+
+                tokens = self.tokenizer.encode(sentence)
+                for i in range(0, len(tokens), self.parent_max_tokens):
+                    chunk_tokens = tokens[i : i + self.parent_max_tokens]
+                    chunk_text = self.tokenizer.decode(
+                        chunk_tokens, skip_special_tokens=True
+                    )
+                    parents.append(
+                        self._make_parent(
+                            chunk_text, section["header_path"], file_hash, file_name
+                        )
+                    )
             else:
-                current_chunk = test_chunk
+                test_chunk = (
+                    current_chunk + " " + sentence if current_chunk else sentence
+                )
+                if len(self.tokenizer.encode(test_chunk)) > self.parent_max_tokens:
+                    if current_chunk:
+                        parents.append(
+                            self._make_parent(
+                                current_chunk,
+                                section["header_path"],
+                                file_hash,
+                                file_name,
+                            )
+                        )
+                    current_chunk = sentence
+                else:
+                    current_chunk = test_chunk
 
         if current_chunk:
             parents.append(
-                self._make_parent(current_chunk, section["header_path"], file_hash, file_name)
+                self._make_parent(
+                    current_chunk, section["header_path"], file_hash, file_name
+                )
             )
 
         return parents
@@ -301,11 +337,15 @@ class ChunkingEngine:
         for parent in parents:
             tokens = self.tokenizer.encode(parent.content)
             
-            # Truncate if exceeds model max to avoid warnings
+            # Defensive fallback: truncate if exceeds model max
+            # This should not happen with proper _split_large_section handling
             if len(tokens) > MAX_TOKENS:
-                print(f"⚠️  Parent chunk exceeds {MAX_TOKENS} tokens ({len(tokens)} tokens). Truncating to fit model constraints.")
+                print(
+                    f"⚠️  Unexpected: Parent chunk exceeds {MAX_TOKENS} tokens "
+                    f"({len(tokens)} tokens). This indicates a bug in parent creation. "
+                    f"Truncating as fallback."
+                )
                 tokens = tokens[:MAX_TOKENS]
-                # Update parent content to match truncated tokens
                 parent.content = self.tokenizer.decode(tokens, skip_special_tokens=True)
             
             stride = self.child_tokens - self.child_overlap
