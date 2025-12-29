@@ -9,17 +9,19 @@ class TestEmbedAPI:
     """Test embedding API integration."""
 
     async def test_health_endpoint(self) -> None:
-        """Test embedding API health endpoint."""
+        """Test unified ML API health endpoint includes embedding status."""
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 response = await client.get("http://localhost:8001/health")
                 assert response.status_code == 200
                 data = response.json()
                 assert data["status"] == "healthy"
-                assert data["device"] == "cpu"
-                assert data["precision"] == "int8"
+                # Unified API returns nested model info
+                assert "models" in data
+                assert data["models"]["embedding"]["device"] == "cuda"
+                assert data["models"]["embedding"]["precision"] == "int8"
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_single_text(self) -> None:
         """Test embedding single text."""
@@ -39,7 +41,7 @@ class TestEmbedAPI:
                 assert isinstance(data["sparse_vecs"][0], dict)
                 assert data["latency_ms"] > 0
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_multiple_texts(self) -> None:
         """Test embedding multiple texts in batch."""
@@ -59,7 +61,7 @@ class TestEmbedAPI:
                 for vec in data["dense_vecs"]:
                     assert len(vec) == 1024
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_with_query_prefix(self) -> None:
         """Test embedding with query prefix applied."""
@@ -87,7 +89,7 @@ class TestEmbedAPI:
                 # Should not be identical (query prefix changes embedding)
                 assert vec_doc != vec_query
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_empty_text_error(self) -> None:
         """Test that empty text returns error."""
@@ -99,7 +101,7 @@ class TestEmbedAPI:
                 )
                 assert response.status_code == 400
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_too_many_texts_error(self) -> None:
         """Test that exceeding MAX_TEXTS_PER_REQUEST returns error."""
@@ -116,7 +118,7 @@ class TestEmbedAPI:
                 assert "Too many texts" in data["detail"]
                 assert "128" in data["detail"]
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
 
     async def test_embed_at_limit_succeeds(self) -> None:
         """Test that exactly MAX_TEXTS_PER_REQUEST texts succeeds."""
@@ -133,4 +135,4 @@ class TestEmbedAPI:
                 assert len(data["dense_vecs"]) == 128
                 assert len(data["sparse_vecs"]) == 128
             except httpx.ConnectError:
-                pytest.skip("Embedding API not running on localhost:8001")
+                pytest.skip("ML API not running on localhost:8001")
