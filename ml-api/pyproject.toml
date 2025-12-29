@@ -1,0 +1,30 @@
+[project]
+name = "ml-api"
+version = "1.0.0"
+description = "Unified ML API for embedding and reranking with GPU acceleration"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "transformers>=4.36.0",
+    "numpy>=1.24.0",
+    "pydantic>=2.5.0",
+    "FlagEmbedding>=1.2.0",
+    "torch>=2.0.0",
+    "optimum>=1.16.0",
+    "onnxruntime-gpu>=1.17.0",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

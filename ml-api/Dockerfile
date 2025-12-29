@@ -11,14 +11,21 @@ WORKDIR /app
 # Set uv environment variables for optimal caching
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
-ENV UV_SYSTEM_PYTHON=1
 
-# Copy requirements file
-COPY requirements.txt ./
+# Copy project files for dependency installation
+COPY pyproject.toml uv.lock* ./
 
-# Install dependencies using uv pip (faster than regular pip)
+# Install dependencies (cached layer - this is the slow part)
+# Using --frozen to skip lockfile validation when uv.lock exists
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --compile-bytecode -r requirements.txt
+    uv sync --frozen --no-install-project --no-editable
+
+# Copy application code
+COPY ml_api.py ./
+
+# Final sync to install the project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-editable
 
 
 # =============================================================================
@@ -29,30 +36,28 @@ FROM python:3.10-slim
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy the virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
+# Add venv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
-COPY app/ ./app/
+COPY ml_api.py ./
 
-# Create directories
-RUN mkdir -p /app/uploads
+# Create models cache directory
+RUN mkdir -p /models_cache
 
-# Expose port
-EXPOSE 8000
+# Expose single port for both endpoints
+EXPOSE 8001
 
 # Health check
-HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=5 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:8001/health || exit 1
 
-# Run the backend
-CMD ["python", "-m", "app.main"]
+# Run the unified ML API
+CMD ["python", "ml_api.py"]
