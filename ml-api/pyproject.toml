@@ -11,7 +11,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "FlagEmbedding>=1.2.0",
     "torch>=2.0.0",
-    "optimum>=1.16.0",
+    "optimum[onnxruntime-gpu]>=1.16.0",
     "onnxruntime-gpu>=1.17.0",
 ]
 
