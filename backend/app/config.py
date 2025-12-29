@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # Service URLs
     qdrant_url: str = "http://localhost:6333"
     embed_api_url: str = "http://localhost:8001"
-    rerank_api_url: str = "http://localhost:8002"
+    rerank_api_url: str = "http://localhost:8001"  # Same as embed, unified ML API
 
     # HuggingFace
     hf_home: str = "./models_cache"

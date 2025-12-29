@@ -405,10 +405,9 @@ async def health() -> dict[str, Any]:
         "status": "healthy",
         "version": "2.0",
         "services": {
-            "qdrant": "connected",
-            "embed_api": "http://localhost:8001",
-            "rerank_api": "http://localhost:8002",
-            "ollama": "http://192.168.1.19:11434",
+            "qdrant": settings.qdrant_url,
+            "ml_api": settings.embed_api_url,  # Unified ML API (embed + rerank)
+            "ollama": settings.ollama_base_url,
         },
         "metrics": metrics.report(),
     }
