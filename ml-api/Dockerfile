@@ -12,8 +12,9 @@ WORKDIR /app
 COPY pyproject.toml uv.lock* ./
 
 # Export locked dependencies to requirements.txt for pip
+# --no-emit-project: exclude the project itself (we just want dependencies)
 # This gives us the speed of uv's resolver with pip's portability
-RUN uv export --frozen --no-hashes --no-dev -o requirements.txt
+RUN uv export --frozen --no-hashes --no-dev --no-emit-project -o requirements.txt
 
 
 # =============================================================================
@@ -39,9 +40,12 @@ WORKDIR /app
 COPY --from=builder /app/requirements.txt ./
 
 # Install dependencies via pip (compatible with this Python installation)
-# Using --no-cache-dir to keep image size small
+# --extra-index-url: PyTorch CUDA 12.1 wheels (not on PyPI)
+# --no-cache-dir: keep image size small
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cu121 \
+    -r requirements.txt
 
 # Set CUDA-related environment variables
 ENV NVIDIA_VISIBLE_DEVICES=all
