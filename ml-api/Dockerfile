@@ -1,5 +1,5 @@
 # =============================================================================
-# Stage 1: Builder - Install dependencies with uv
+# Stage 1: Builder - Export pinned requirements using uv
 # =============================================================================
 FROM python:3.10-slim AS builder
 
@@ -8,24 +8,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Set uv environment variables for optimal caching
-ENV UV_LINK_MODE=copy
-ENV UV_COMPILE_BYTECODE=1
-
-# Copy project files for dependency installation
+# Copy project files
 COPY pyproject.toml uv.lock* ./
 
-# Install dependencies (cached layer - this is the slow part)
-# Using --frozen to skip lockfile validation when uv.lock exists
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-editable
-
-# Copy application code
-COPY ml_api.py ./
-
-# Final sync to install the project itself
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-editable
+# Export locked dependencies to requirements.txt for pip
+# This gives us the speed of uv's resolver with pip's portability
+RUN uv export --frozen --no-hashes --no-dev -o requirements.txt
 
 
 # =============================================================================
@@ -47,11 +35,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy the virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
+# Copy exported requirements from builder
+COPY --from=builder /app/requirements.txt ./
 
-# Add venv to PATH
-ENV PATH="/app/.venv/bin:$PATH"
+# Install dependencies via pip (compatible with this Python installation)
+# Using --no-cache-dir to keep image size small
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
 
 # Set CUDA-related environment variables
 ENV NVIDIA_VISIBLE_DEVICES=all
