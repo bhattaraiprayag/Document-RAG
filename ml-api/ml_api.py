@@ -181,7 +181,7 @@ def run_embed_inference_sync(
         padding=True,
         truncation=True,
         max_length=512,
-        return_tensors="np",
+        return_tensors="pt",  # PyTorch tensors required for ONNX IO Binding
     )
 
     t0 = time.perf_counter()
@@ -356,11 +356,14 @@ async def lifespan(app: FastAPI):
     )
 
     # Use ONNX Runtime with CUDA Execution Provider
+    # use_io_binding=False: Required because this model has dynamic axes
+    # that IO Binding cannot handle (causes "invalid literal for int()" error)
     model_resources["embed_model"] = ORTModelForCustomTasks.from_pretrained(
         EMBED_ONNX_MODEL_ID,
         file_name="model_quantized.onnx",
         cache_dir=str(MODELS_CACHE_DIR),
         provider="CUDAExecutionProvider",
+        use_io_binding=False,
     )
     print(f"✅ Embedding model loaded: {EMBED_ONNX_MODEL_ID}")
 
