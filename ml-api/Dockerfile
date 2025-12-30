@@ -29,13 +29,20 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # =============================================================================
-# Stage 2: Runtime - Minimal image with only what's needed
+# Stage 2: Runtime - NVIDIA CUDA image for GPU acceleration
 # =============================================================================
-FROM python:3.10-slim
+# CRITICAL: Use NVIDIA CUDA runtime image for onnxruntime-gpu support
+# This provides libcublasLt.so.12, cuDNN, and other CUDA libraries
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-# Install only runtime dependencies
+# Install Python 3.10 and runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
     curl \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -45,6 +52,10 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Add venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Set CUDA-related environment variables
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Copy application code
 COPY ml_api.py ./

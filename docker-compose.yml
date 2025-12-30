@@ -9,7 +9,8 @@ services:
     volumes:
       - ./qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      # Use wget (available in Alpine) instead of curl (not available)
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/readyz"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,6 +65,8 @@ services:
       # Both embed and rerank now point to unified ml-api
       - EMBED_API_URL=http://ml-api:8001
       - RERANK_API_URL=http://ml-api:8001
+      # HuggingFace cache for tokenizer (shared with ml-api)
+      - HF_HOME=/models_cache
     volumes:
       - ./uploads:/app/uploads
       - ./models_cache:/models_cache
@@ -92,7 +95,15 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      # nginx:alpine has wget
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - rag-network
 
