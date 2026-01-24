@@ -1,4 +1,5 @@
 """FastAPI main application."""
+
 import os  # noqa: E402
 
 # Suppress HuggingFace symlink warnings on Windows
@@ -142,9 +143,9 @@ class IngestionManager:
     async def _process_job(self, job: IngestionJob, client: Any) -> None:
         """Process a single ingestion job."""
         try:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"🔄 Processing: {job.file_name}")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
             # Stage: Converting
             job.stage = IngestionStage.CONVERTING
@@ -233,7 +234,7 @@ class IngestionManager:
             job.progress = 1.0
             metrics.increment("ingestion_completed")
             print(f"✅ COMPLETE: {job.file_name}")
-            print(f"{'='*60}\n")
+            print(f"{'=' * 60}\n")
 
         except Exception as e:
             job.stage = IngestionStage.FAILED

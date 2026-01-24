@@ -1,4 +1,5 @@
 """Qdrant vector database client."""
+
 from typing import Any, Optional
 
 from qdrant_client import QdrantClient, models

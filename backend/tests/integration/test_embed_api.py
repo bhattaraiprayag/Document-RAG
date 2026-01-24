@@ -1,4 +1,5 @@
 """Integration tests for embedding API."""
+
 import httpx
 import pytest
 

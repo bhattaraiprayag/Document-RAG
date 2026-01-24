@@ -1,4 +1,5 @@
 """Unit tests for metrics collector."""
+
 import asyncio
 
 import pytest

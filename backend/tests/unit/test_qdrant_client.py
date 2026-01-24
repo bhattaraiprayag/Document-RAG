@@ -1,4 +1,5 @@
 """Unit tests for Qdrant client."""
+
 from unittest.mock import Mock, patch
 
 import pytest

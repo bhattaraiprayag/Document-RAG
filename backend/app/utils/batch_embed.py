@@ -1,4 +1,5 @@
 """Utility functions for batch embedding operations."""
+
 import asyncio
 from typing import Any, Callable, Optional
 

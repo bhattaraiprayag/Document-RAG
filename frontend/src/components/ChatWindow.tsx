@@ -88,7 +88,7 @@ export function ChatWindow({ selectedFiles }: ChatWindowProps) {
                   return updated
                 })
               }
-            } catch (e) {
+            } catch {
               // Skip malformed JSON
             }
           }
@@ -141,7 +141,6 @@ export function ChatWindow({ selectedFiles }: ChatWindowProps) {
                         remarkPlugins={[remarkGfm]}
                         components={{
                           // Customize code blocks
-                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
                           code({ inline, className, children, ...props }: ComponentPropsWithoutRef<'code'> & { inline?: boolean }) {
                             return inline ? (
                               <code className={`bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-blue-300 ${className || ''}`} {...props}>

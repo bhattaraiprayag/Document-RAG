@@ -1,4 +1,5 @@
 """Model factory for switching between LLM providers."""
+
 import json
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, AsyncIterator
@@ -195,6 +196,5 @@ class ModelFactory:
 
         else:
             raise ModelFactoryError(
-                f"Invalid provider: {self.provider_type}. "
-                f"Must be 'openai' or 'ollama'"
+                f"Invalid provider: {self.provider_type}. Must be 'openai' or 'ollama'"
             )

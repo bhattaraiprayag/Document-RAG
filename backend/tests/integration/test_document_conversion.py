@@ -1,4 +1,5 @@
 """Integration tests for document conversion."""
+
 from pathlib import Path
 
 import pytest

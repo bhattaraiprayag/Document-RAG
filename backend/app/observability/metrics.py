@@ -1,4 +1,5 @@
 """Metrics collection for observability."""
+
 import asyncio
 import time
 from collections import defaultdict

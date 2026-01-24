@@ -1,4 +1,5 @@
 """Unit tests for model factory."""
+
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
