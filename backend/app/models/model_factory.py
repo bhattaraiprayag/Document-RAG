@@ -2,6 +2,7 @@
 import json
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, AsyncIterator
+
 import httpx
 from openai import AsyncOpenAI
 
@@ -87,6 +88,7 @@ class OpenAIProvider(ModelProvider):
                 error_msg += f" - {e}"
             print(f"❌ {error_msg}")
             import traceback
+
             traceback.print_exc()
             raise RuntimeError(error_msg) from e
 
@@ -108,7 +110,7 @@ class OllamaProvider(ModelProvider):
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(60.0, connect=10.0),
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
-            follow_redirects=True
+            follow_redirects=True,
         )
 
     async def generate_streaming(
@@ -151,6 +153,7 @@ class OllamaProvider(ModelProvider):
         except Exception as e:
             print(f"ERROR in Ollama streaming: {type(e).__name__}: {e}")
             import traceback
+
             traceback.print_exc()
             raise
 

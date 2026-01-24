@@ -1,7 +1,5 @@
 """Pytest configuration and shared fixtures."""
-import os
 import pytest
-from typing import Generator
 from dotenv import load_dotenv
 
 # Load test environment

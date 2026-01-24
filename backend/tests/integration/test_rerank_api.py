@@ -1,7 +1,6 @@
 """Integration tests for reranking API (via unified ML API)."""
-import pytest
 import httpx
-
+import pytest
 
 # Unified ML API URL (rerank endpoint shares port with embed)
 ML_API_URL = "http://localhost:8001"

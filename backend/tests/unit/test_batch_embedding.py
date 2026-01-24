@@ -1,8 +1,9 @@
 """Unit tests for batch embedding functionality."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.utils.batch_embed import embed_texts_in_batches, DEFAULT_EMBED_BATCH_SIZE
+import pytest
+
+from app.utils.batch_embed import DEFAULT_EMBED_BATCH_SIZE, embed_texts_in_batches
 
 
 class TestEmbedTextsInBatches:

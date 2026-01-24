@@ -1,13 +1,13 @@
 """RAG orchestrator coordinating retrieval, reranking, and generation."""
-import httpx
-from typing import Optional, AsyncGenerator, Any
 from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Optional
 
+import httpx
+
+from ..config import settings
 from ..database.qdrant_client import QdrantDB
 from ..models.model_factory import ModelFactory
-from ..config import settings
 from ..observability.metrics import metrics, timed
-
 
 # Retrieval parameters
 HYBRID_SEARCH_LIMIT = 30
@@ -78,7 +78,7 @@ class RAGOrchestrator:
         # Step 4: Get parent contexts (deduplicated)
         parent_ids = []
         seen_parents = set()
-        for idx, score in reranked[:RERANK_TOP_K]:
+        for idx, _ in reranked[:RERANK_TOP_K]:
             parent_id = search_results[idx]["parent_id"]
             if parent_id not in seen_parents:
                 parent_ids.append(parent_id)
@@ -184,14 +184,17 @@ class RAGOrchestrator:
         context_str = "\n---\n".join(context_parts)
 
         # System prompt
-        system_prompt = """You are a helpful assistant that answers questions based on the provided context.
-
-RULES:
-1. Answer ONLY using information from the provided context.
-2. If the context doesn't contain the answer, say "I don't have information about that in the provided documents."
-3. Cite your sources using [Source N] notation.
-4. Be concise and direct.
-5. Use markdown formatting for readability."""
+        system_prompt = (
+            "You are a helpful assistant that answers questions based on the provided "
+            "context.\n\n"
+            "RULES:\n"
+            "1. Answer ONLY using information from the provided context.\n"
+            "2. If the context doesn't contain the answer, say "
+            '"I don\'t have information about that in the provided documents."\n'
+            "3. Cite your sources using [Source N] notation.\n"
+            "4. Be concise and direct.\n"
+            "5. Use markdown formatting for readability."
+        )
 
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]

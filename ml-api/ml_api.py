@@ -8,17 +8,16 @@ This API provides:
 Both models are loaded at startup for "hot" API performance.
 Single port (8001) with path-based routing.
 """
-import os
-import gc
-import time
 import asyncio
-from pathlib import Path
+import gc
+import os
+import time
 from contextlib import asynccontextmanager
-from typing import List, Dict, Union, Tuple
+from pathlib import Path
+from typing import Dict, List, Tuple, Union
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import numpy as np
 
 # CRITICAL: Set cache directories BEFORE any HuggingFace imports
 MODELS_CACHE_DIR = Path("/models_cache")
@@ -31,14 +30,9 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 print(f"🔧 HF_HOME set to: {MODELS_CACHE_DIR}")
 
 # NOW import HuggingFace libraries (after env vars are set)
-from optimum.onnxruntime import ORTModelForCustomTasks
-from transformers import AutoTokenizer
-from FlagEmbedding import FlagReranker
-
-
-# ============================================================================
-# Configuration
-# ============================================================================
+from FlagEmbedding import FlagReranker  # noqa: E402
+from optimum.onnxruntime import ORTModelForCustomTasks  # noqa: E402
+from transformers import AutoTokenizer  # noqa: E402
 
 # Embedding Model Config
 EMBED_MODEL_ID = "BAAI/bge-m3"
@@ -56,20 +50,12 @@ RERANK_BATCH_TIMEOUT_S = float(os.getenv("RERANK_BATCH_TIMEOUT", "0.02"))
 RERANK_MAX_QUEUE_SIZE = 100
 
 
-# ============================================================================
-# Global Resources
-# ============================================================================
-
 model_resources = {
     "embed_tokenizer": None,
     "embed_model": None,
     "reranker": None,
 }
 
-
-# ============================================================================
-# Embedding Batcher
-# ============================================================================
 
 class EmbedBatcher:
     """Async batching for embedding requests."""
@@ -126,9 +112,7 @@ class EmbedBatcher:
             if batch_data:
                 await self._run_batch(batch_data)
 
-    async def _run_batch(
-        self, batch_data: List[Tuple[List[str], asyncio.Future]]
-    ):
+    async def _run_batch(self, batch_data: List[Tuple[List[str], asyncio.Future]]):
         """Flatten batch, run inference, redistribute results."""
         all_texts = []
         request_indices = []
@@ -176,6 +160,9 @@ def run_embed_inference_sync(
     tokenizer = model_resources["embed_tokenizer"]
     model = model_resources["embed_model"]
 
+    if tokenizer is None or model is None:
+        raise RuntimeError("Embedding model or tokenizer not initialized")
+
     inputs = tokenizer(
         texts,
         padding=True,
@@ -221,10 +208,6 @@ def run_embed_inference_sync(
 
     return dense_vecs, sparse_vecs, latency
 
-
-# ============================================================================
-# Rerank Batcher
-# ============================================================================
 
 class RerankBatcher:
     """Async batching for reranking requests."""
@@ -290,11 +273,13 @@ class RerankBatcher:
         for query, docs, _ in batch_data:
             pairs = [[query, doc] for doc in docs]
             all_pairs.extend(pairs)
-            request_boundaries.append({
-                "start": start_idx,
-                "end": start_idx + len(pairs),
-                "doc_count": len(docs),
-            })
+            request_boundaries.append(
+                {
+                    "start": start_idx,
+                    "end": start_idx + len(pairs),
+                    "doc_count": len(docs),
+                }
+            )
             start_idx += len(pairs)
 
         loop = asyncio.get_running_loop()
@@ -303,6 +288,8 @@ class RerankBatcher:
             t0 = time.perf_counter()
 
             reranker = model_resources["reranker"]
+            if reranker is None:
+                raise RuntimeError("Reranker model not initialized")
             scores = await loop.run_in_executor(
                 None, lambda: reranker.compute_score(all_pairs)
             )
@@ -312,19 +299,21 @@ class RerankBatcher:
             if not isinstance(scores, list):
                 scores = [scores]
 
-            for i, (query, docs, future) in enumerate(batch_data):
+            for i, (_, _, future) in enumerate(batch_data):
                 bounds = request_boundaries[i]
-                doc_scores = scores[bounds["start"]:bounds["end"]]
+                doc_scores = scores[bounds["start"] : bounds["end"]]
 
                 indexed_scores = list(enumerate(doc_scores))
                 indexed_scores.sort(key=lambda x: x[1], reverse=True)
 
                 if not future.done():
-                    future.set_result({
-                        "results": indexed_scores,
-                        "latency_ms": latency_ms,
-                        "batch_size": len(all_pairs),
-                    })
+                    future.set_result(
+                        {
+                            "results": indexed_scores,
+                            "latency_ms": latency_ms,
+                            "batch_size": len(all_pairs),
+                        }
+                    )
 
         except Exception as e:
             print(f"❌ Rerank batch error: {e}")
@@ -332,10 +321,6 @@ class RerankBatcher:
                 if not future.done():
                     future.set_exception(e)
 
-
-# ============================================================================
-# FastAPI Application
-# ============================================================================
 
 embed_batcher = EmbedBatcher()
 rerank_batcher = RerankBatcher()
@@ -351,8 +336,7 @@ async def lifespan(app: FastAPI):
     # Load Embedding Model (ONNX INT8 on GPU)
     print("\n📦 Loading BGE-M3 Embedding Model (ONNX INT8, GPU)...")
     model_resources["embed_tokenizer"] = AutoTokenizer.from_pretrained(
-        EMBED_MODEL_ID,
-        cache_dir=str(MODELS_CACHE_DIR)
+        EMBED_MODEL_ID, cache_dir=str(MODELS_CACHE_DIR)
     )
 
     # Use ONNX Runtime with CUDA Execution Provider
@@ -370,10 +354,7 @@ async def lifespan(app: FastAPI):
     # Load Reranker Model (FP16 on GPU)
     print("\n📦 Loading BGE-Reranker Model (FP16, GPU)...")
     model_resources["reranker"] = FlagReranker(
-        RERANK_MODEL_ID,
-        use_fp16=True,
-        device="cuda",
-        cache_dir=str(MODELS_CACHE_DIR)
+        RERANK_MODEL_ID, use_fp16=True, device="cuda", cache_dir=str(MODELS_CACHE_DIR)
     )
     print(f"✅ Reranker model loaded: {RERANK_MODEL_ID}")
 
@@ -403,18 +384,16 @@ app = FastAPI(
 )
 
 
-# ============================================================================
-# Pydantic Models
-# ============================================================================
-
 class EmbeddingRequest(BaseModel):
     """Embedding request model."""
+
     text: Union[str, List[str]]
     is_query: bool = False
 
 
 class EmbeddingResponse(BaseModel):
     """Embedding response model."""
+
     dense_vecs: List[List[float]]
     sparse_vecs: List[Dict[int, float]]
     latency_ms: float
@@ -423,6 +402,7 @@ class EmbeddingResponse(BaseModel):
 
 class RerankRequest(BaseModel):
     """Reranking request model."""
+
     query: str
     documents: List[str]
     top_k: int = 10
@@ -430,6 +410,7 @@ class RerankRequest(BaseModel):
 
 class RerankResult(BaseModel):
     """Single reranking result."""
+
     index: int
     score: float
     document: str
@@ -437,14 +418,11 @@ class RerankResult(BaseModel):
 
 class RerankResponse(BaseModel):
     """Reranking response model."""
+
     results: List[RerankResult]
     latency_ms: float
     batch_size: int
 
-
-# ============================================================================
-# API Endpoints
-# ============================================================================
 
 @app.post("/embed", response_model=EmbeddingResponse)
 async def create_embeddings(request: EmbeddingRequest):
@@ -465,7 +443,10 @@ async def create_embeddings(request: EmbeddingRequest):
     if len(input_texts) > EMBED_MAX_TEXTS_PER_REQUEST:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many texts. Max: {EMBED_MAX_TEXTS_PER_REQUEST}, got: {len(input_texts)}",
+            detail=(
+                f"Too many texts. Max: {EMBED_MAX_TEXTS_PER_REQUEST}, "
+                f"got: {len(input_texts)}"
+            ),
         )
 
     if request.is_query:
@@ -501,7 +482,7 @@ async def rerank(request: RerankRequest):
     result = await rerank_batcher.process(request.query, request.documents)
 
     top_results = []
-    for idx, score in result["results"][:request.top_k]:
+    for idx, score in result["results"][: request.top_k]:
         top_results.append(
             RerankResult(
                 index=idx,

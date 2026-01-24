@@ -1,8 +1,9 @@
 """Qdrant vector database client."""
-from qdrant_client import QdrantClient, models
-from typing import Optional, Any
-from ..config import settings
+from typing import Any, Optional
 
+from qdrant_client import QdrantClient, models
+
+from ..config import settings
 
 CHUNKS_COLLECTION = "chunks"
 PARENTS_COLLECTION = "parents"

@@ -1,6 +1,6 @@
 """Integration tests for embedding API."""
-import pytest
 import httpx
+import pytest
 
 
 @pytest.mark.integration

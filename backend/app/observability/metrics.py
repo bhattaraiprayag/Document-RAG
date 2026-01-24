@@ -1,10 +1,10 @@
 """Metrics collection for observability."""
-import time
 import asyncio
+import time
 from collections import defaultdict
-from statistics import quantiles
 from functools import wraps
-from typing import Callable, TypeVar, ParamSpec, Any
+from statistics import quantiles
+from typing import Any, Callable, ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")

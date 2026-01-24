@@ -1,6 +1,6 @@
 """Utility functions for batch embedding operations."""
 import asyncio
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 # Default batch size for embedding operations
 DEFAULT_EMBED_BATCH_SIZE = 64
@@ -11,7 +11,7 @@ async def embed_texts_in_batches(
     texts: list[str],
     embed_api_url: str,
     batch_size: int = DEFAULT_EMBED_BATCH_SIZE,
-    progress_callback: Optional[callable] = None,
+    progress_callback: Optional[Callable] = None,
 ) -> tuple[list[list[float]], list[dict[int, float]], float]:
     """
     Embed texts in controlled batches to prevent memory explosion.

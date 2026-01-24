@@ -1,58 +1,61 @@
-# =============================================================================
-# Stage 1: Builder - Install dependencies with uv
-# =============================================================================
+# Stage 1: Builder
 FROM python:3.10-slim AS builder
 
-# Install uv from official image
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Set uv environment variables for optimal caching
-ENV UV_LINK_MODE=copy
+
 ENV UV_COMPILE_BYTECODE=1
-ENV UV_SYSTEM_PYTHON=1
+ENV UV_LINK_MODE=copy
 
-# Copy requirements file
-COPY requirements.txt ./
 
-# Install dependencies using uv pip (faster than regular pip)
+COPY pyproject.toml uv.lock ./
+
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --compile-bytecode -r requirements.txt
+    uv sync --frozen --no-dev --no-install-project
 
 
-# =============================================================================
-# Stage 2: Runtime - Minimal image with only what's needed
-# =============================================================================
+COPY . .
+
+# Sync the project environment (ensures all dependencies are in .venv)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
+
+# Stage 2: Runtime
 FROM python:3.10-slim
 
-# Install only runtime dependencies
+WORKDIR /app
+
+
+COPY --from=builder /app/.venv /app/.venv
+
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Download NLTK data
+# Download NLTK data using the specific python from venv
 RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
 
-# Copy application code
+
 COPY app/ ./app/
 
-# Create directories
+
 RUN mkdir -p /app/uploads
 
-# Expose port
+
 EXPOSE 8000
 
-# Health check
+
 HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=5 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Run the backend
-CMD ["python", "-m", "app.main"]
+
+CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000"]

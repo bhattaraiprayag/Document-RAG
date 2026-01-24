@@ -1,6 +1,8 @@
 """Unit tests for metrics collector."""
-import pytest
 import asyncio
+
+import pytest
+
 from app.observability.metrics import MetricsCollector, timed
 
 
@@ -131,6 +133,7 @@ class TestTimedDecorator:
         @timed("test_component", metrics)
         def sync_func() -> str:
             import time
+
             time.sleep(0.01)  # ~10ms
             return "result"
 

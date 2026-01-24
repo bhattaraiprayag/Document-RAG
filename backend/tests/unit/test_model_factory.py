@@ -1,12 +1,13 @@
 """Unit tests for model factory."""
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 from app.models.model_factory import (
     ModelFactory,
-    ModelProvider,
-    OpenAIProvider,
-    OllamaProvider,
     ModelFactoryError,
+    OllamaProvider,
+    OpenAIProvider,
 )
 
 
@@ -104,6 +105,7 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     async def test_generate_streaming(self) -> None:
         """Test Ollama streaming generation."""
+
         async def mock_aiter_lines():
             lines = [
                 '{"message": {"content": "Hello"}}',
@@ -142,6 +144,7 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     async def test_generate_streaming_handles_malformed_json(self) -> None:
         """Test Ollama provider handles malformed JSON gracefully."""
+
         async def mock_aiter_lines():
             lines = [
                 '{"message": {"content": "Hello"}}',

@@ -1,6 +1,8 @@
 """Unit tests for Qdrant client."""
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from app.database.qdrant_client import QdrantDB
 
 
@@ -15,7 +17,7 @@ class TestQdrantClient:
         mock_client.get_collections.return_value.collections = []
         mock_qdrant.return_value = mock_client
 
-        db = QdrantDB()
+        QdrantDB()
 
         # Should create both collections
         assert mock_client.create_collection.call_count == 2
@@ -34,7 +36,7 @@ class TestQdrantClient:
         ]
         mock_qdrant.return_value = mock_client
 
-        db = QdrantDB()
+        QdrantDB()
 
         # Should not create any collections
         mock_client.create_collection.assert_not_called()
@@ -214,7 +216,10 @@ class TestQdrantClient:
         mock_point1 = Mock()
         mock_point1.payload = {"file_hash": "hash1", "file_name": "file1.pdf"}
         mock_point2 = Mock()
-        mock_point2.payload = {"file_hash": "hash1", "file_name": "file1.pdf"}  # Duplicate
+        mock_point2.payload = {
+            "file_hash": "hash1",
+            "file_name": "file1.pdf",
+        }  # Duplicate
         mock_point3 = Mock()
         mock_point3.payload = {"file_hash": "hash2", "file_name": "file2.pdf"}
 

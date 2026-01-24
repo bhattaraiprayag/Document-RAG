@@ -1,8 +1,10 @@
 """Unit tests for RAG orchestrator."""
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
-from app.rag.orchestrator import RAGOrchestrator, RetrievedContext
+
+import pytest
+
 from app.config import settings
+from app.rag.orchestrator import RAGOrchestrator, RetrievedContext
 
 
 @pytest.mark.unit
@@ -19,10 +21,12 @@ class TestRAGOrchestrator:
         # Mock HTTP client
         mock_client = AsyncMock()
         mock_response = Mock()
-        mock_response.json = Mock(return_value={
-            "dense_vecs": [[0.1, 0.2, 0.3]],
-            "sparse_vecs": [{1: 0.5, 10: 0.3}],
-        })
+        mock_response.json = Mock(
+            return_value={
+                "dense_vecs": [[0.1, 0.2, 0.3]],
+                "sparse_vecs": [{1: 0.5, 10: 0.3}],
+            }
+        )
         mock_response.raise_for_status = Mock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
@@ -40,18 +44,18 @@ class TestRAGOrchestrator:
     @pytest.mark.asyncio
     @patch("app.rag.orchestrator.QdrantDB")
     @patch("app.rag.orchestrator.ModelFactory")
-    async def test_rerank(
-        self, mock_factory_class: Mock, mock_db_class: Mock
-    ) -> None:
+    async def test_rerank(self, mock_factory_class: Mock, mock_db_class: Mock) -> None:
         """Test document reranking."""
         mock_client = AsyncMock()
         mock_response = Mock()
-        mock_response.json = Mock(return_value={
-            "results": [
-                {"index": 1, "score": 0.9},
-                {"index": 0, "score": 0.7},
-            ],
-        })
+        mock_response.json = Mock(
+            return_value={
+                "results": [
+                    {"index": 1, "score": 0.9},
+                    {"index": 0, "score": 0.7},
+                ],
+            }
+        )
         mock_response.raise_for_status = Mock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
@@ -79,10 +83,12 @@ class TestRAGOrchestrator:
         # Mock embed query
         mock_client = AsyncMock()
         mock_response = Mock()
-        mock_response.json = Mock(return_value={
-            "dense_vecs": [[0.1] * 1024],
-            "sparse_vecs": [{1: 0.5}],
-        })
+        mock_response.json = Mock(
+            return_value={
+                "dense_vecs": [[0.1] * 1024],
+                "sparse_vecs": [{1: 0.5}],
+            }
+        )
         mock_response.raise_for_status = Mock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
@@ -110,10 +116,12 @@ class TestRAGOrchestrator:
 
         mock_client = AsyncMock()
         mock_response = Mock()
-        mock_response.json = Mock(return_value={
-            "dense_vecs": [[0.1] * 1024],
-            "sparse_vecs": [{1: 0.5}],
-        })
+        mock_response.json = Mock(
+            return_value={
+                "dense_vecs": [[0.1] * 1024],
+                "sparse_vecs": [{1: 0.5}],
+            }
+        )
         mock_response.raise_for_status = Mock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
@@ -140,30 +148,59 @@ class TestRAGOrchestrator:
         # Setup mocks
         mock_db = Mock()
         mock_db.hybrid_search.return_value = [
-            {"content": "child1", "parent_id": "parent-001", "file_name": "test.pdf", "header_path": "Ch1"},
-            {"content": "child2", "parent_id": "parent-001", "file_name": "test.pdf", "header_path": "Ch1"},  # Same parent
-            {"content": "child3", "parent_id": "parent-002", "file_name": "test.pdf", "header_path": "Ch2"},
+            {
+                "content": "child1",
+                "parent_id": "parent-001",
+                "file_name": "test.pdf",
+                "header_path": "Ch1",
+            },
+            {
+                "content": "child2",
+                "parent_id": "parent-001",
+                "file_name": "test.pdf",
+                "header_path": "Ch1",
+            },  # Same parent
+            {
+                "content": "child3",
+                "parent_id": "parent-002",
+                "file_name": "test.pdf",
+                "header_path": "Ch2",
+            },
         ]
         mock_db.get_parents.return_value = [
-            {"id": "parent-001", "content": "Parent 1 content", "file_name": "test.pdf", "header_path": "Ch1"},
-            {"id": "parent-002", "content": "Parent 2 content", "file_name": "test.pdf", "header_path": "Ch2"},
+            {
+                "id": "parent-001",
+                "content": "Parent 1 content",
+                "file_name": "test.pdf",
+                "header_path": "Ch1",
+            },
+            {
+                "id": "parent-002",
+                "content": "Parent 2 content",
+                "file_name": "test.pdf",
+                "header_path": "Ch2",
+            },
         ]
         mock_db_class.return_value = mock_db
 
         # Mock embed and rerank
         mock_client = AsyncMock()
         embed_response = Mock()
-        embed_response.json = Mock(return_value={"dense_vecs": [[0.1] * 1024], "sparse_vecs": [{1: 0.5}]})
+        embed_response.json = Mock(
+            return_value={"dense_vecs": [[0.1] * 1024], "sparse_vecs": [{1: 0.5}]}
+        )
         embed_response.raise_for_status = Mock()
 
         rerank_response = Mock()
-        rerank_response.json = Mock(return_value={
-            "results": [
-                {"index": 0, "score": 0.9},
-                {"index": 1, "score": 0.8},
-                {"index": 2, "score": 0.7},
-            ]
-        })
+        rerank_response.json = Mock(
+            return_value={
+                "results": [
+                    {"index": 0, "score": 0.9},
+                    {"index": 1, "score": 0.8},
+                    {"index": 2, "score": 0.7},
+                ]
+            }
+        )
         rerank_response.raise_for_status = Mock()
         mock_client.post = AsyncMock(side_effect=[embed_response, rerank_response])
 

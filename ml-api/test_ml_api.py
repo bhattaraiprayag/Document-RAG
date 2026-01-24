@@ -3,9 +3,8 @@ Tests for the unified ML API.
 
 Run with: pytest test_ml_api.py -v
 """
-import pytest
 import httpx
-from typing import Any
+import pytest
 
 # Test configuration
 ML_API_URL = "http://localhost:8001"

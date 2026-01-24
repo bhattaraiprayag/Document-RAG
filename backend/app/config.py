@@ -1,6 +1,7 @@
 """Application configuration."""
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -9,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,
-        extra="ignore"  # Ignore extra fields not defined in the model
+        extra="ignore",  # Ignore extra fields not defined in the model
     )
 
     # Model Provider Configuration

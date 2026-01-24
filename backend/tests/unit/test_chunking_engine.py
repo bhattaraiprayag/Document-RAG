@@ -1,6 +1,7 @@
 """Unit tests for chunking engine."""
 import pytest
-from app.chunking.engine import ChunkingEngine, ParentChunk, ChildChunk
+
+from app.chunking.engine import ChildChunk, ChunkingEngine, ParentChunk
 
 
 @pytest.mark.unit
@@ -140,9 +141,7 @@ Content 1.2
     def test_empty_document(self, sample_file_hash: str) -> None:
         """Test handling of empty document."""
         engine = ChunkingEngine()
-        parents, children = engine.chunk_document(
-            "", sample_file_hash, "empty.md"
-        )
+        parents, children = engine.chunk_document("", sample_file_hash, "empty.md")
 
         # Should return empty lists for empty content
         assert len(parents) == 0
@@ -164,9 +163,7 @@ Content 1.2
     ) -> None:
         """Test that parent IDs are unique."""
         engine = ChunkingEngine()
-        parents, _ = engine.chunk_document(
-            sample_markdown, sample_file_hash, "test.md"
-        )
+        parents, _ = engine.chunk_document(sample_markdown, sample_file_hash, "test.md")
 
         parent_ids = [p.id for p in parents]
         assert len(parent_ids) == len(set(parent_ids))
@@ -209,9 +206,7 @@ Content 1.2
         # Create a long document
         long_doc = "# Chapter 1\n\n" + " ".join(["This is sentence number."] * 200)
 
-        parents, children = engine.chunk_document(
-            long_doc, sample_file_hash, "long.md"
-        )
+        parents, children = engine.chunk_document(long_doc, sample_file_hash, "long.md")
 
         # Should split into multiple parents
         assert len(parents) > 1
@@ -238,9 +233,7 @@ Also small.
 
 This is also quite small.
 """
-        parents, _ = engine.chunk_document(
-            markdown, sample_file_hash, "small.md"
-        )
+        parents, _ = engine.chunk_document(markdown, sample_file_hash, "small.md")
 
         # Small sections should be merged
         assert len(parents) < 3  # Should merge some sections
@@ -250,9 +243,7 @@ This is also quite small.
         engine = ChunkingEngine()
 
         markdown = "# Test\n\nContent here."
-        parents, children = engine.chunk_document(
-            markdown, sample_file_hash, "test.md"
-        )
+        parents, children = engine.chunk_document(markdown, sample_file_hash, "test.md")
 
         # Just verify it doesn't crash
         assert len(parents) > 0
@@ -281,7 +272,9 @@ This is also quite small.
         # Verify each parent is within token limit
         for parent in parents:
             parent_tokens = len(engine.tokenizer.encode(parent.content))
-            assert parent_tokens <= engine.parent_max_tokens + 10  # Small buffer for tokenizer variance
+            assert (
+                parent_tokens <= engine.parent_max_tokens + 10
+            )  # Small buffer for tokenizer variance
 
     def test_oversized_sentence_no_data_loss(self, sample_file_hash: str) -> None:
         """Test that no significant data is lost when splitting oversized sentences."""
@@ -355,10 +348,13 @@ This is also quite small.
             parent_tokens = len(engine.tokenizer.encode(parent.content))
             # Should never exceed max (with small buffer for tokenizer edge cases)
             assert parent_tokens <= engine.parent_max_tokens + 5, (
-                f"Parent has {parent_tokens} tokens, exceeds max of {engine.parent_max_tokens}"
+                f"Parent has {parent_tokens} tokens, "
+                f"exceeds max of {engine.parent_max_tokens}"
             )
 
-    def test_children_created_for_force_split_parents(self, sample_file_hash: str) -> None:
+    def test_children_created_for_force_split_parents(
+        self, sample_file_hash: str
+    ) -> None:
         """Test that children are properly created for force-split parents."""
         engine = ChunkingEngine(
             parent_max_tokens=100,
@@ -383,7 +379,9 @@ This is also quite small.
                 assert child is not None, f"Child {child_id} not found"
                 assert child.parent_id == parent.id
 
-    def test_header_path_preserved_for_split_sections(self, sample_file_hash: str) -> None:
+    def test_header_path_preserved_for_split_sections(
+        self, sample_file_hash: str
+    ) -> None:
         """Test that header path is preserved when sections are force-split."""
         engine = ChunkingEngine(
             parent_max_tokens=100,

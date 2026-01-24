@@ -1,19 +1,22 @@
 # Build stage
-FROM node:18-alpine AS build
+FROM node:20-slim AS build
 
 WORKDIR /app
 
+# Install pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm install
+RUN pnpm install
 
 # Copy source
 COPY . .
 
 # Build app
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM nginx:alpine

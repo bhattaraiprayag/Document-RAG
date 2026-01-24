@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ComponentPropsWithoutRef } from 'react'
 import { Send } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -141,19 +141,20 @@ export function ChatWindow({ selectedFiles }: ChatWindowProps) {
                         remarkPlugins={[remarkGfm]}
                         components={{
                           // Customize code blocks
-                          code({ inline, className, children, ...props }: any) {
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                          code({ inline, className, children, ...props }: ComponentPropsWithoutRef<'code'> & { inline?: boolean }) {
                             return inline ? (
-                              <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-blue-300" {...props}>
+                              <code className={`bg-gray-800 px-1.5 py-0.5 rounded text-xs font-mono text-blue-300 ${className || ''}`} {...props}>
                                 {children}
                               </code>
                             ) : (
-                              <code className="block bg-gray-800 p-3 rounded-md text-xs font-mono overflow-x-auto" {...props}>
+                              <code className={`block bg-gray-800 p-3 rounded-md text-xs font-mono overflow-x-auto ${className || ''}`} {...props}>
                                 {children}
                               </code>
                             )
                           },
                           // Customize links
-                          a({ children, href, ...props }: any) {
+                          a({ children, href, ...props }: ComponentPropsWithoutRef<'a'>) {
                             return (
                               <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" {...props}>
                                 {children}
@@ -161,14 +162,14 @@ export function ChatWindow({ selectedFiles }: ChatWindowProps) {
                             )
                           },
                           // Customize lists
-                          ul({ children, ...props }: any) {
+                          ul({ children, ...props }: ComponentPropsWithoutRef<'ul'>) {
                             return <ul className="list-disc list-inside space-y-1 my-2" {...props}>{children}</ul>
                           },
-                          ol({ children, ...props }: any) {
+                          ol({ children, ...props }: ComponentPropsWithoutRef<'ol'>) {
                             return <ol className="list-decimal list-inside space-y-1 my-2" {...props}>{children}</ol>
                           },
                           // Customize paragraphs
-                          p({ children, ...props }: any) {
+                          p({ children, ...props }: ComponentPropsWithoutRef<'p'>) {
                             return <p className="mb-2 leading-relaxed" {...props}>{children}</p>
                           },
                         }}

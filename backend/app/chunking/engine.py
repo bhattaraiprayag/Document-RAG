@@ -3,9 +3,9 @@ import hashlib
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Optional
-from transformers import AutoTokenizer
+
 import nltk
+from transformers import AutoTokenizer
 
 
 @dataclass
@@ -143,7 +143,10 @@ class ChunkingEngine:
             if section_content:
                 header_path = " > ".join(h for h in current_headers if h)
                 sections.append(
-                    {"header_path": header_path, "content": f"## {title}\n\n{section_content}"}
+                    {
+                        "header_path": header_path,
+                        "content": f"## {title}\n\n{section_content}",
+                    }
                 )
 
         return sections
@@ -173,7 +176,9 @@ class ChunkingEngine:
                 # Flush buffer first
                 if buffer_content:
                     parents.append(
-                        self._make_parent(buffer_content, buffer_header, file_hash, file_name)
+                        self._make_parent(
+                            buffer_content, buffer_header, file_hash, file_name
+                        )
                     )
                     buffer_content = ""
 
@@ -190,7 +195,9 @@ class ChunkingEngine:
                     if combined_tokens > self.parent_max_tokens:
                         # Flush buffer, start new
                         parents.append(
-                            self._make_parent(buffer_content, buffer_header, file_hash, file_name)
+                            self._make_parent(
+                                buffer_content, buffer_header, file_hash, file_name
+                            )
                         )
                         buffer_content = section["content"]
                         buffer_header = section["header_path"]
@@ -203,17 +210,23 @@ class ChunkingEngine:
                 # Normal sized section
                 if buffer_content:
                     parents.append(
-                        self._make_parent(buffer_content, buffer_header, file_hash, file_name)
+                        self._make_parent(
+                            buffer_content, buffer_header, file_hash, file_name
+                        )
                     )
                     buffer_content = ""
 
                 parents.append(
-                    self._make_parent(section["content"], section["header_path"], file_hash, file_name)
+                    self._make_parent(
+                        section["content"], section["header_path"], file_hash, file_name
+                    )
                 )
 
         # Flush remaining buffer
         if buffer_content:
-            parents.append(self._make_parent(buffer_content, buffer_header, file_hash, file_name))
+            parents.append(
+                self._make_parent(buffer_content, buffer_header, file_hash, file_name)
+            )
 
         return parents
 
@@ -336,7 +349,7 @@ class ChunkingEngine:
 
         for parent in parents:
             tokens = self.tokenizer.encode(parent.content)
-            
+
             # Defensive fallback: truncate if exceeds model max
             # This should not happen with proper _split_large_section handling
             if len(tokens) > MAX_TOKENS:
@@ -347,7 +360,7 @@ class ChunkingEngine:
                 )
                 tokens = tokens[:MAX_TOKENS]
                 parent.content = self.tokenizer.decode(tokens, skip_special_tokens=True)
-            
+
             stride = self.child_tokens - self.child_overlap
 
             chunk_index = 0
@@ -356,7 +369,9 @@ class ChunkingEngine:
                 chunk_tokens = tokens[start:end]
 
                 # Decode back to text
-                chunk_text = self.tokenizer.decode(chunk_tokens, skip_special_tokens=True)
+                chunk_text = self.tokenizer.decode(
+                    chunk_tokens, skip_special_tokens=True
+                )
 
                 # Generate deterministic UUID for child
                 child_hash = hashlib.md5(

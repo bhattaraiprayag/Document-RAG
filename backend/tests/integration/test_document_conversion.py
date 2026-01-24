@@ -1,6 +1,7 @@
 """Integration tests for document conversion."""
-import pytest
 from pathlib import Path
+
+import pytest
 from markitdown import MarkItDown
 
 

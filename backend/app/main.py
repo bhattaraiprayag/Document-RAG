@@ -1,32 +1,31 @@
 """FastAPI main application."""
-import os
+import os  # noqa: E402
 
 # Suppress HuggingFace symlink warnings on Windows
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"  # noqa: E402
 
-import hashlib
 import asyncio
-from pathlib import Path
-from typing import Optional, Any, AsyncIterator
-from contextlib import asynccontextmanager
-from datetime import datetime
-from dataclasses import dataclass, field
-from enum import Enum
+import hashlib
 import json
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from markitdown import MarkItDown
 from pydantic import BaseModel
 
-from markitdown import MarkItDown
-
 from .chunking.engine import ChunkingEngine
-from .database.qdrant_client import QdrantDB
-from .rag.orchestrator import RAGOrchestrator
-from .observability.metrics import metrics
 from .config import settings
-from .utils.batch_embed import embed_texts_in_batches, DEFAULT_EMBED_BATCH_SIZE
+from .database.qdrant_client import QdrantDB
+from .observability.metrics import metrics
+from .rag.orchestrator import RAGOrchestrator
+from .utils.batch_embed import DEFAULT_EMBED_BATCH_SIZE, embed_texts_in_batches
 
 # Configuration
 UPLOAD_DIR = Path("./uploads")
@@ -140,9 +139,7 @@ class IngestionManager:
                 except Exception as e:
                     print(f"❌ Worker error: {e}")
 
-    async def _process_job(
-        self, job: IngestionJob, client: Any
-    ) -> None:
+    async def _process_job(self, job: IngestionJob, client: Any) -> None:
         """Process a single ingestion job."""
         try:
             print(f"\n{'='*60}")
@@ -153,7 +150,7 @@ class IngestionManager:
             job.stage = IngestionStage.CONVERTING
             job.progress = 0.2
             metrics.increment("ingestion_started")
-            print(f"📝 Converting to markdown...")
+            print("📝 Converting to markdown...")
 
             result = self.markitdown.convert(job.file_path)
             markdown_content = result.text_content
@@ -162,7 +159,7 @@ class IngestionManager:
             # Stage: Chunking
             job.stage = IngestionStage.CHUNKING
             job.progress = 0.4
-            print(f"✂️  Chunking document...")
+            print("✂️  Chunking document...")
 
             parents, children = self.chunker.chunk_document(
                 markdown_content, job.file_hash, job.file_name
@@ -197,7 +194,7 @@ class IngestionManager:
             # Stage: Indexing
             job.stage = IngestionStage.INDEXING
             job.progress = 0.8
-            print(f"💾 Indexing to Qdrant...")
+            print("💾 Indexing to Qdrant...")
 
             # Store in Qdrant
             self.db.store_chunks(
@@ -253,12 +250,12 @@ rag = RAGOrchestrator()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     """Application lifespan manager."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🚀 Starting Hybrid RAG Backend")
-    print("="*60)
+    print("=" * 60)
     await ingestion_manager.start()
     print("✅ All systems operational")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     yield
 
@@ -315,7 +312,7 @@ class IngestionStatus(BaseModel):
 
 # --- Endpoints ---
 @app.post("/api/documents/upload")
-async def upload_document(file: UploadFile = File(...)) -> dict[str, str]:
+async def upload_document(file: UploadFile = File(...)) -> dict[str, str]:  # noqa: B008
     """Upload a document for ingestion."""
     # Validate extension
     ext = Path(file.filename or "").suffix.lower()
@@ -331,7 +328,9 @@ async def upload_document(file: UploadFile = File(...)) -> dict[str, str]:
         f.write(content)
 
     # Queue for ingestion
-    file_hash = await ingestion_manager.add_job(str(file_path), file.filename or "upload")
+    file_hash = await ingestion_manager.add_job(
+        str(file_path), file.filename or "upload"
+    )
 
     return {"file_hash": file_hash, "message": "Queued for ingestion"}
 
@@ -388,6 +387,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             yield "data: [DONE]\n\n"
         except Exception as e:
             import traceback
+
             error_type = type(e).__name__
             error_msg = str(e) if str(e) else "Unknown error"
             full_error = f"{error_type}: {error_msg}"
