@@ -96,6 +96,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-quality, frontend-quality, ml-api-quality]
     steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+
+      - name: Check initial disk space
+        run: df -h
+
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
@@ -108,6 +121,9 @@ jobs:
           push: false
           tags: document-rag-backend:latest
 
+      - name: Check disk space after backend
+        run: df -h
+
       - name: Build Frontend
         uses: docker/build-push-action@v5
         with:
@@ -115,9 +131,15 @@ jobs:
           push: false
           tags: document-rag-frontend:latest
 
+      - name: Check disk space after frontend
+        run: df -h
+
       - name: Build ML API
         uses: docker/build-push-action@v5
         with:
           context: ./ml-api
           push: false
           tags: document-rag-ml-api:latest
+
+      - name: Check disk space after ml-api
+        run: df -h
