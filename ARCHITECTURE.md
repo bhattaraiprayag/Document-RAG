@@ -34,49 +34,41 @@ The system follows a microservices pattern, consisting of four main components:
 
 ## System Diagram
 
-```
-           +------------------------------------------------+
-           |               User (Browser)                   |
-           +-----------------------+------------------------+
-                                   |
-                                   v
-+--------------------------------------------------------------------------+
-|                           Frontend (React/Vite)                          |
-|      [File Upload] [Chat Window] [File List]      |      Served by Nginx |
-+----------------------------------+---------------------------------------+
-                                   | (REST API Calls)
-                                   v
-+--------------------------------------------------------------------------+
-|                            Backend (FastAPI)                             |
-|                                                                          |
-|  /upload ----------------------> Document Ingestion Pipeline ------> [uploads/]
-|     |                                |
-|     |                          1. Chunking
-|     |                                |
-|     |                          2. Embedding (via ML-API)
-|     |                                |
-|     v                          3. Store in Vector DB ---------------> +--------------+
-|  /chat -----------------------> RAG Query Pipeline                   |              |
-|     |                                |                                | Qdrant       |
-|     |                          1. Embed Query (via ML-API)            | Vector DB    |
-|     |                                |                                |              |
-|     |                          2. Search Vector DB <------------------ +--------------+
-|     |                                |
-|     |                          3. Rerank Results (via ML-API)
-|     |                                |
-|     v                          4. Generate Answer (via Generative AI)
-|  (Response to User) <----------------|
-|                                                                          |
-+----------------------------------+---------------------------------------+
-                                   |
-          +------------------------+------------------------+
-          | (Inference Requests)                            | (Generation Request)
-          v                                                 v
-+--------------------------+                     +---------------------------+
-|       ML-API (FastAPI)       |                     |   Generative AI Service   |
-|  - /embed (BGE-M3 ONNX)  |                     | (e.g., OpenAI, Gemini)    |
-|  - /rerank (BGE-Reranker)|                     +---------------------------+
-+--------------------------+
+```mermaid
+graph LR
+    %% Styles
+    classDef default fill:#fff,stroke:#333,stroke-width:1px;
+    classDef db fill:#FFF3E0,stroke:#EF6C00;
+    classDef service fill:#E1BEE7,stroke:#4A148C;
+    
+    User((User)) --> Frontend[Frontend]
+    Frontend --> Backend{FastAPI}
+
+    subgraph Ingestion [Ingestion Pipeline]
+        direction LR
+        I1(Chunking) --> I2(Embedding)
+        I2 --> I3(Indexing)
+    end
+
+    subgraph RAG [RAG Pipeline]
+        direction LR
+        R1(Embed Query) --> R2(Vector Search)
+        R2 --> R3(Reranking)
+        R3 --> R4(Generation)
+    end
+
+    Backend -->|/upload| Ingestion
+    Backend -->|/chat| RAG
+
+    %% Dependencies
+    I1 -.-> Storage[(Disk)]:::db
+    I2 -.-> ML[ML-API]:::service
+    I3 --> Qdrant[(Qdrant)]:::db
+
+    R1 -.-> ML
+    R2 <--> Qdrant
+    R3 -.-> ML
+    R4 -.-> AI[OpenAI / Gemini]:::service
 ```
 
 ## Design Decisions

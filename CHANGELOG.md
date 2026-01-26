@@ -5,8 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
+## [0.2.0] - 2024-01-26
 ### Added
 -   Implemented strict CI/CD pipeline using Github Actions.
 -   Added `pre-commit` hooks for code hygiene and security (leaked secrets).
@@ -17,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Migrated Backend linting from `flake8`/`black` to using `ruff` strictly.
 -   Enforced multi-stage Docker builds.
 -   Updated documentation to reflect new tooling (`uv`, `pnpm`).
+-   Updated ARCHITECTURE.md to reflect existing system diagram in Mermaid format.
 
 ### Fixed
 -   Standardized dependency management across the repo.
