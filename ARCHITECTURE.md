@@ -36,11 +36,15 @@ The system follows a microservices pattern, consisting of four main components:
 
 ```mermaid
 graph LR
-    %% Styles
-    classDef default fill:#fff,stroke:#333,stroke-width:1px;
-    classDef db fill:#FFF3E0,stroke:#EF6C00;
-    classDef service fill:#E1BEE7,stroke:#4A148C;
-    
+    %% --- Styling ---
+    classDef default fill:#fff,stroke:#333,stroke-width:1px,color:#000;
+    classDef db fill:#FFF3E0,stroke:#EF6C00,color:#000;
+    classDef service fill:#E1BEE7,stroke:#4A148C,color:#000;
+
+    style Ingestion color:#000,stroke:#666
+    style RAG color:#000,stroke:#666
+
+    %% --- Nodes ---
     User((User)) --> Frontend[Frontend]
     Frontend --> Backend{FastAPI}
 
@@ -60,7 +64,7 @@ graph LR
     Backend -->|/upload| Ingestion
     Backend -->|/chat| RAG
 
-    %% Dependencies
+    %% --- Dependencies ---
     I1 -.-> Storage[(Disk)]:::db
     I2 -.-> ML[ML-API]:::service
     I3 --> Qdrant[(Qdrant)]:::db
