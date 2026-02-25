@@ -3,6 +3,7 @@
 from typing import Any, Optional
 
 from qdrant_client import QdrantClient, models
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from ..config import settings
 
@@ -27,7 +28,7 @@ class QdrantDB:
 
         # CHUNKS COLLECTION (retrieval targets with vectors)
         if CHUNKS_COLLECTION not in collections:
-            self.client.create_collection(
+            self._create_collection_if_missing(
                 collection_name=CHUNKS_COLLECTION,
                 vectors_config={
                     DENSE_VECTOR_NAME: models.VectorParams(
@@ -43,9 +44,31 @@ class QdrantDB:
 
         # PARENTS COLLECTION (context source, no vectors)
         if PARENTS_COLLECTION not in collections:
-            self.client.create_collection(
+            self._create_collection_if_missing(
                 collection_name=PARENTS_COLLECTION, vectors_config={}
             )
+
+    def _create_collection_if_missing(
+        self,
+        collection_name: str,
+        vectors_config: Any,
+        sparse_vectors_config: Optional[Any] = None,
+    ) -> None:
+        """Create collection and ignore deterministic already-exists conflicts."""
+        create_kwargs = {
+            "collection_name": collection_name,
+            "vectors_config": vectors_config,
+        }
+        if sparse_vectors_config is not None:
+            create_kwargs["sparse_vectors_config"] = sparse_vectors_config
+
+        try:
+            self.client.create_collection(**create_kwargs)
+        except UnexpectedResponse as exc:
+            error_content = exc.content.decode("utf-8", errors="ignore").lower()
+            if exc.status_code == 409 or "already exists" in error_content:
+                return
+            raise
 
     def file_exists(self, file_hash: str) -> bool:
         """

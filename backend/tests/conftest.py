@@ -4,7 +4,8 @@ import pytest
 from dotenv import load_dotenv
 
 # Load test environment
-load_dotenv(".env.test")
+load_dotenv("../.env")
+load_dotenv(".env.test", override=True)
 
 
 @pytest.fixture(scope="session")

@@ -30,13 +30,9 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-      - name: Download NLTK data
-        working-directory: backend
-        run: uv run python -m nltk.downloader punkt_tab
-
       - name: Test with Pytest
         working-directory: backend
-        run: uv run pytest --cov=app --cov-report=xml
+        run: uv run pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=63
 
   frontend-quality:
     runs-on: ubuntu-latest
@@ -90,7 +86,9 @@ jobs:
 
       - name: Test with Pytest
         working-directory: ml-api
-        run: uv run pytest
+        env:
+          ML_API_READY_TIMEOUT: "5"
+        run: uv run pytest --cov=cache_config --cov-report=term-missing --cov-report=xml --cov-fail-under=90
 
   docker-build:
     runs-on: ubuntu-latest
@@ -143,3 +141,30 @@ jobs:
 
       - name: Check disk space after ml-api
         run: df -h
+
+      - name: Prepare env for optional smoke test
+        if: ${{ vars.ENABLE_DOCKER_SMOKE == 'true' }}
+        run: cp .env.example .env
+
+      - name: Docker compose smoke test (optional)
+        if: ${{ vars.ENABLE_DOCKER_SMOKE == 'true' }}
+        run: |
+          docker compose up -d --wait --wait-timeout 300
+          curl -fsS http://localhost:8000/api/health
+          curl -fsS http://localhost:8001/health
+          curl -fsS http://localhost:3000/
+
+      - name: Upload compose logs on smoke failure
+        if: ${{ failure() && vars.ENABLE_DOCKER_SMOKE == 'true' }}
+        run: docker compose logs --no-color > compose-logs.txt
+
+      - name: Upload smoke logs artifact
+        if: ${{ failure() && vars.ENABLE_DOCKER_SMOKE == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-logs
+          path: compose-logs.txt
+
+      - name: Tear down compose stack
+        if: ${{ always() && vars.ENABLE_DOCKER_SMOKE == 'true' }}
+        run: docker compose down -v

@@ -55,7 +55,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-COPY ml_api.py ./
+COPY ml_api.py cache_config.py ./
 RUN mkdir -p /models_cache
 
 EXPOSE 8001

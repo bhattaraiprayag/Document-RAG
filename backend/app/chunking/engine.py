@@ -72,11 +72,16 @@ class ChunkingEngine:
         # Markdown header pattern
         self.header_pattern = re.compile(r"^(#{1,3})\s+(.+)$", re.MULTILINE)
 
-        # Ensure NLTK punkt is available
-        try:
-            nltk.data.find("tokenizers/punkt")
-        except LookupError:
-            nltk.download("punkt", quiet=True)
+        # Ensure required NLTK tokenizers are available
+        required_nltk_resources = (
+            ("tokenizers/punkt", "punkt"),
+            ("tokenizers/punkt_tab", "punkt_tab"),
+        )
+        for resource_path, resource_name in required_nltk_resources:
+            try:
+                nltk.data.find(resource_path)
+            except LookupError:
+                nltk.download(resource_name, quiet=True)
 
     def chunk_document(
         self, markdown_content: str, file_hash: str, file_name: str

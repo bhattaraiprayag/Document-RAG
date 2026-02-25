@@ -25,6 +25,7 @@ This is the recommended way to run the application.
         cp .env.example .env
         ```
     -   Open `.env` and fill in your API key (e.g., `OPENAI_API_KEY` or `GEMINI_API_KEY`).
+    -   This root `.env` is used by Docker Compose backend configuration.
 
 3.  **Run with Docker Compose**:
     ```bash
@@ -62,6 +63,7 @@ The ML-API handles embeddings and reranking. It requires PyTorch.
     uv run ml_api.py
     ```
     The service will start on `http://localhost:8001`.
+    By default it uses a writable local cache at `ml-api/models_cache` unless `HF_HOME` is set.
 
 ### 3. Backend (Python/uv)
 The orchestration layer.
@@ -107,6 +109,21 @@ This project uses `pre-commit` to ensure code quality.
     uv run pre-commit install
     ```
     *Note: `pre-commit` is listed in backend dev-dependencies.*
+
+## 6. Makefile shortcuts
+
+From the project root:
+
+```bash
+make bootstrap      # install backend/ml-api/frontend dependencies
+make lint           # run backend + ml-api + frontend linters
+make test           # run backend and ml-api test suites
+make docker-build   # build Docker images
+make docker-up      # start stack in detached mode
+make docker-smoke   # run basic runtime endpoint smoke checks
+make down           # stop stack
+make clean          # stop stack and remove volumes
+```
 
 ## Troubleshooting
 

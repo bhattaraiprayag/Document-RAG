@@ -32,6 +32,22 @@ This project demonstrates a production-ready architecture for such a system.
 -   **Efficient Dependency Management**: Uses **uv** for lightning-fast, reproducible Python environments.
 -   **GPU Acceleration**: `ml-api` is optimized for CUDA but degrades gracefully to CPU.
 -   **Interactive UI**: Clean, responsive chat interface.
+-   **Unified ML API Endpoint**: Embedding and reranking use the same service (`:8001`).
+
+## Developer Command Surface
+
+Use the root Makefile for consistent local/CI commands:
+
+```bash
+make bootstrap
+make lint
+make test
+make docker-build
+make docker-up
+make docker-smoke
+make down
+make clean
+```
 
 ## License
 

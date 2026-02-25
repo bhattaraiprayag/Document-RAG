@@ -3,6 +3,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from httpx import Headers
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.database.qdrant_client import QdrantDB
 
@@ -41,6 +43,45 @@ class TestQdrantClient:
 
         # Should not create any collections
         mock_client.create_collection.assert_not_called()
+
+    @patch("app.database.qdrant_client.QdrantClient")
+    def test_init_collections_ignores_already_exists_conflict(
+        self, mock_qdrant: Mock
+    ) -> None:
+        """Test startup race where collection is created by another worker."""
+        mock_client = Mock()
+        mock_client.get_collections.return_value.collections = []
+        conflict = UnexpectedResponse(
+            status_code=409,
+            reason_phrase="Conflict",
+            content=b"Collection 'chunks' already exists!",
+            headers=Headers({}),
+        )
+        mock_client.create_collection.side_effect = [conflict, None]
+        mock_qdrant.return_value = mock_client
+
+        QdrantDB()
+
+        assert mock_client.create_collection.call_count == 2
+
+    @patch("app.database.qdrant_client.QdrantClient")
+    def test_init_collections_reraises_non_conflict_errors(
+        self, mock_qdrant: Mock
+    ) -> None:
+        """Test that unexpected collection errors are surfaced."""
+        mock_client = Mock()
+        mock_client.get_collections.return_value.collections = []
+        fatal_error = UnexpectedResponse(
+            status_code=500,
+            reason_phrase="Internal Server Error",
+            content=b"unexpected failure",
+            headers=Headers({}),
+        )
+        mock_client.create_collection.side_effect = fatal_error
+        mock_qdrant.return_value = mock_client
+
+        with pytest.raises(UnexpectedResponse):
+            QdrantDB()
 
     @patch("app.database.qdrant_client.QdrantClient")
     def test_file_exists_true(self, mock_qdrant: Mock) -> None:

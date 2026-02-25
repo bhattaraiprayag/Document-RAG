@@ -14,15 +14,15 @@ import gc
 import os
 import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from cache_config import resolve_models_cache_dir
+
 # CRITICAL: Set cache directories BEFORE any HuggingFace imports
-MODELS_CACHE_DIR = Path("/models_cache")
-MODELS_CACHE_DIR.mkdir(exist_ok=True)
+MODELS_CACHE_DIR = resolve_models_cache_dir()
 os.environ["HF_HOME"] = str(MODELS_CACHE_DIR)
 os.environ["HF_HUB_CACHE"] = str(MODELS_CACHE_DIR / "hub")
 os.environ["HUGGINGFACE_HUB_CACHE"] = str(MODELS_CACHE_DIR / "hub")

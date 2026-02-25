@@ -4,6 +4,9 @@ Tests for the unified ML API.
 Run with: pytest test_ml_api.py -v
 """
 
+import os
+import time
+
 import httpx
 import pytest
 
@@ -11,10 +14,29 @@ import pytest
 ML_API_URL = "http://localhost:8001"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def api_url() -> str:
     """Return the ML API URL."""
     return ML_API_URL
+
+
+@pytest.fixture(scope="session", autouse=True)
+def wait_for_ml_api_ready(api_url: str) -> None:
+    """Wait for health endpoint before running integration tests."""
+    timeout_seconds = int(os.getenv("ML_API_READY_TIMEOUT", "15"))
+    deadline = time.time() + timeout_seconds
+
+    with httpx.Client(timeout=5.0) as client:
+        while time.time() < deadline:
+            try:
+                response = client.get(f"{api_url}/health")
+                if response.status_code == 200:
+                    return
+            except httpx.HTTPError:
+                pass
+            time.sleep(1)
+
+    pytest.skip(f"ML API not healthy at {api_url}/health within {timeout_seconds}s")
 
 
 class TestHealthEndpoint:

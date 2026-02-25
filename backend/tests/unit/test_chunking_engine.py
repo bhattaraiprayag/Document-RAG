@@ -1,5 +1,7 @@
 """Unit tests for chunking engine."""
 
+from unittest.mock import Mock, call, patch
+
 import pytest
 
 from app.chunking.engine import ChildChunk, ChunkingEngine, ParentChunk
@@ -8,6 +10,50 @@ from app.chunking.engine import ChildChunk, ChunkingEngine, ParentChunk
 @pytest.mark.unit
 class TestChunkingEngine:
     """Test document chunking functionality."""
+
+    @patch("app.chunking.engine.AutoTokenizer.from_pretrained")
+    @patch("app.chunking.engine.nltk.download")
+    @patch("app.chunking.engine.nltk.data.find")
+    def test_init_downloads_missing_nltk_resources(
+        self,
+        mock_find: Mock,
+        mock_download: Mock,
+        mock_from_pretrained: Mock,
+    ) -> None:
+        """Test that missing punkt resources are downloaded."""
+        mock_find.side_effect = [LookupError(), LookupError()]
+        mock_from_pretrained.return_value = Mock()
+
+        ChunkingEngine()
+
+        assert mock_find.call_args_list == [
+            call("tokenizers/punkt"),
+            call("tokenizers/punkt_tab"),
+        ]
+        assert mock_download.call_args_list == [
+            call("punkt", quiet=True),
+            call("punkt_tab", quiet=True),
+        ]
+
+    @patch("app.chunking.engine.AutoTokenizer.from_pretrained")
+    @patch("app.chunking.engine.nltk.download")
+    @patch("app.chunking.engine.nltk.data.find")
+    def test_init_skips_nltk_download_when_resources_exist(
+        self,
+        mock_find: Mock,
+        mock_download: Mock,
+        mock_from_pretrained: Mock,
+    ) -> None:
+        """Test that existing punkt resources are not downloaded."""
+        mock_from_pretrained.return_value = Mock()
+
+        ChunkingEngine()
+
+        assert mock_find.call_args_list == [
+            call("tokenizers/punkt"),
+            call("tokenizers/punkt_tab"),
+        ]
+        mock_download.assert_not_called()
 
     def test_split_by_headers(self, sample_markdown: str) -> None:
         """Test splitting markdown by headers."""
