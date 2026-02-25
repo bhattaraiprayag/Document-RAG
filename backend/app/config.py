@@ -1,15 +1,29 @@
 """Application configuration."""
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _resolve_root_env_file() -> str:
+    """Resolve the repository-root .env path for source-tree execution."""
+    config_file = Path(__file__).resolve()
+    for parent in config_file.parents:
+        if (parent / "docker-compose.yml").exists() and (parent / "backend").exists():
+            return str(parent / ".env")
+    return str(Path.cwd() / ".env")
+
+
+REPO_ROOT_ENV_FILE = Path(_resolve_root_env_file())
+ENV_FILE = str(REPO_ROOT_ENV_FILE)
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"),
+        env_file=ENV_FILE,
         case_sensitive=False,
         extra="ignore",  # Ignore extra fields not defined in the model
     )

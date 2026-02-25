@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from app.config import ENV_FILE, REPO_ROOT_ENV_FILE
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -20,3 +22,9 @@ def test_compose_backend_env_file_matches_quickstart_convention() -> None:
 
     assert "env_file:\n      - ./.env" in compose_yml
     assert "cp .env.example .env" in quickstart
+
+
+def test_backend_settings_use_repo_root_env_file_only() -> None:
+    """Backend settings should source file-based env from repo-root .env only."""
+    assert REPO_ROOT_ENV_FILE == REPO_ROOT / ".env"
+    assert ENV_FILE == str(REPO_ROOT / ".env")
