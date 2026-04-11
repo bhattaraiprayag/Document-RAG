@@ -5,7 +5,7 @@ description = "Unified ML API for embedding and reranking with GPU acceleration"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.109.0",
-    "uvicorn[standard]>=0.27.0",
+    "uvicorn[standard]>=0.44.0",
     "transformers>=4.36.0",
     "numpy>=1.24.0",
     "pydantic>=2.5.0",
